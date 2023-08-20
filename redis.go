@@ -5,11 +5,10 @@ import (
 	"bytes"
 	"context"
 	"encoding/gob"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
-
-	"github.com/pkg/errors"
 
 	"github.com/redis/go-redis/v9"
 	"github.com/vitaliy-ukiru/fsm-telebot"
@@ -63,7 +62,7 @@ func (s *Storage) GetState(chatId, userId int64) (fsm.State, error) {
 		if errors.Is(err, redis.Nil) {
 			return fsm.DefaultState, nil
 		}
-		return fsm.DefaultState, wrapError(err, "get")
+		return fsm.DefaultState, wrapError(err, "get state")
 	}
 
 	return fsm.State(val), nil
@@ -76,12 +75,12 @@ func (s *Storage) SetState(chatId, userId int64, state fsm.State) error {
 		string(state),
 		s.pref.TTLState,
 	).Err()
-	return wrapError(err, "set")
+	return wrapError(err, "set state")
 }
 
 func (s *Storage) ResetState(chatId, userId int64, withData bool) error {
 	if err := s.SetState(chatId, userId, fsm.DefaultState); err != nil {
-		return wrapError(err, "set state to default")
+		return wrapError(err, "reset state")
 	}
 
 	if withData {
@@ -104,12 +103,12 @@ func (s *Storage) resetData(chatId, userId int64) error {
 			Scan(context.TODO(), cursor, redisKey, s.pref.ResetDataBatchSize).
 			Result()
 		if err != nil {
-			return errors.Wrap(err, "scan")
+			return fmt.Errorf("scan: %w", err)
 		}
 
 		if len(keys) > 0 {
 			if err := s.rds.Del(context.TODO(), keys...).Err(); err != nil {
-				return errors.Wrap(err, "delete keys")
+				return fmt.Errorf("delete keys: %w", err)
 			}
 		}
 
@@ -188,6 +187,16 @@ func (s *Storage) decode(data []byte, to interface{}) error {
 	return decoder.Decode(to)
 }
 
-func wrapError(err error, msg string) error {
-	return errors.Wrapf(err, "fsm-telebot/storage/redis: %s", msg)
+type ErrOperation struct {
+	Operation string
+	Err       error
+}
+
+func (e ErrOperation) Unwrap() error { return e.Err }
+func (e ErrOperation) Error() string {
+	return fmt.Sprintf("fsm-telebot/storage/redis: %s: %v", e.Operation, e.Err)
+}
+
+func wrapError(err error, op string) error {
+	return &ErrOperation{Operation: op, Err: err}
 }
