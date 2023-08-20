@@ -1,4 +1,4 @@
-module github.com/nacknime-official/fsm-telebot-redis-storages
+module github.com/nacknime-official/fsm-telebot-redis-storage
 
 go 1.17
 
