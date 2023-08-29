@@ -1,5 +1,5 @@
-// Package redis contains redis storage.
-package redis
+// Package redisfsm contains redis storage.
+package redisfsm
 
 import (
 	"bytes"
