@@ -5,7 +5,9 @@ go 1.17
 require (
 	github.com/redis/go-redis/v9 v9.0.2
 	github.com/stretchr/testify v1.8.1
-	github.com/vitaliy-ukiru/fsm-telebot v1.1.2-0.20230825084922-8c19497fe94d // NOTE: sync with last commits
+	// sync main repository under version policy
+	// for some bracnches may as pseudo version
+	github.com/vitaliy-ukiru/fsm-telebot v1.1.2-0.20230825084922-8c19497fe94d
 )
 
 require (
