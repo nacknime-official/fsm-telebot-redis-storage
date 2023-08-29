@@ -44,15 +44,25 @@ type StorageSettings struct {
 	ResetDataBatchSize int64
 }
 
+const defaultPrefix = "fsm"
+
 // NewStorage returns new redis storage.
 func NewStorage(client *redis.Client, pref StorageSettings) *Storage {
 	if pref.Prefix == "" {
-		pref.Prefix = "fsm"
+		pref.Prefix = defaultPrefix
 	}
 
 	return &Storage{
 		rds:  client,
 		pref: pref,
+	}
+}
+
+// NewDefaultStorage return new redis with default settings.
+func NewDefaultStorage(client *redis.Client) *Storage {
+	return &Storage{
+		rds:  client,
+		pref: StorageSettings{Prefix: defaultPrefix},
 	}
 }
 
