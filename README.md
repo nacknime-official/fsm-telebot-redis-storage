@@ -5,7 +5,7 @@ Redis storage for [vitaliy-ukiru/fsm-telebot](https://github.com/vitaliy-ukiru/f
 ## Install
 
 ```
-go get github.com/nacknime-official/fsm-telebot-redis-storages
+go get github.com/nacknime-official/fsm-telebot-redis-storage
 ```
 
 ## Example
