@@ -50,22 +50,18 @@ type StorageSettings struct {
 const defaultPrefix = "fsm"
 
 // NewStorage returns new redis storage.
-func NewStorage(client *redis.Client, pref StorageSettings) *Storage {
-	if pref.Prefix == "" {
-		pref.Prefix = defaultPrefix
+func NewStorage(client *redis.Client, opts ...OptionFunc) *Storage {
+	pref := StorageSettings{Prefix: defaultPrefix}
+	if len(opts) != 0 {
+		prefPtr := &pref
+		for _, opt := range opts {
+			opt(prefPtr)
+		}
 	}
 
 	return &Storage{
 		rds:  client,
 		pref: pref,
-	}
-}
-
-// NewDefaultStorage return new redis with default settings.
-func NewDefaultStorage(client *redis.Client) *Storage {
-	return &Storage{
-		rds:  client,
-		pref: StorageSettings{Prefix: defaultPrefix},
 	}
 }
 

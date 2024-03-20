@@ -25,12 +25,3 @@ func WithResetDataBatchSize(batchSize int64) OptionFunc {
 		settings.ResetDataBatchSize = batchSize
 	}
 }
-
-func FromOptions(opts ...OptionFunc) StorageSettings {
-	s := StorageSettings{}
-	sPtr := &s
-	for _, opt := range opts {
-		opt(sPtr)
-	}
-	return s
-}
