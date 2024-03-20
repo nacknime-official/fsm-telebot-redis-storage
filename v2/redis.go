@@ -20,6 +20,7 @@ type keyType string
 const (
 	stateKey keyType = "state"
 	dataKey  keyType = "data"
+	all      keyType = "*"
 )
 
 type Storage struct {
@@ -88,8 +89,8 @@ func (s *Storage) SetState(ctx context.Context, key fsm.StorageKey, state fsm.St
 }
 
 func (s *Storage) ResetState(ctx context.Context, key fsm.StorageKey, withData bool) error {
-	//TODO: Add transaction
-	if err := s.SetState(ctx, key, fsm.DefaultState); err != nil {
+	err := s.rds.Del(ctx, s.generateKey(key, stateKey)).Err()
+	if err != nil {
 		return wrapError(err, "reset state")
 	}
 
