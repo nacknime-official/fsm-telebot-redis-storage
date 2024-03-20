@@ -184,12 +184,13 @@ func (s *Storage) generateKey(key fsm.StorageKey, keyType keyType, keys ...strin
 		strconv.FormatInt(key.BotID, 10),
 		strconv.FormatInt(key.ChatID, 10),
 		strconv.FormatInt(key.UserID, 10),
-		string(keyType),
 	)
 
 	if key.ThreadID != 0 {
 		parts = append(parts, strconv.FormatInt(key.ThreadID, 10))
 	}
+
+	parts = append(parts, string(keyType))
 
 	if len(keys) > 0 {
 		parts = append(parts, keys...)
