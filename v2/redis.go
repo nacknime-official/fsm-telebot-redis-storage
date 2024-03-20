@@ -20,7 +20,6 @@ type keyType string
 const (
 	stateKey keyType = "state"
 	dataKey  keyType = "data"
-	all      keyType = "*"
 )
 
 type Storage struct {
