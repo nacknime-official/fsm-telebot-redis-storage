@@ -8,8 +8,7 @@ require (
 	// sync main repository under version policy
 	// for some bracnches may as pseudo version
 	github.com/vitaliy-ukiru/fsm-telebot/v2 v2.0.0-alpha.1
-	golang.org/x/net v0.22.0
-	gopkg.in/telebot.v3 v3.2.1
+	gopkg.in/telebot.v3 v3.2.1 // indirect
 )
 
 require (
