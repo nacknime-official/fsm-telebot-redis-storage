@@ -46,5 +46,45 @@ func ExampleNewDefaultStorage() {
 	manager.Use(middleware.Recover(func(err error) {
 		log.Printf("panic recovered: %v", err)
 	}))
+}
 
+func ExampleNewStorage() {
+	bot, err := tele.NewBot(tele.Settings{
+		Token:   os.Getenv("BOT_TOKEN"),
+		Offline: true,
+	})
+
+	if err != nil {
+		panic(err)
+	}
+
+	client := redis.NewClient(&redis.Options{
+		Addr: os.Getenv("REDIS_ADDR"),
+	})
+
+	if err := client.Ping(context.Background()).Err(); err != nil {
+		panic(err)
+	}
+
+	fsmStorage := redisfsm.NewStorage(client,
+		redisfsm.FromOptions(
+			redisfsm.WithPrefix("fsm_test_bot"),
+			redisfsm.WithResetDataBatchSize(16),
+		),
+	)
+
+	defer func(fsmStorage *redisfsm.Storage) {
+		err := fsmStorage.Close()
+		if err != nil {
+			log.Printf("redis storage Close: %v", err)
+		}
+	}(fsmStorage)
+
+	g := bot.Group()
+	g.Use(middleware.AutoRespond())
+
+	manager := fsm.NewManager(bot, g, fsmStorage, nil)
+	manager.Use(middleware.Recover(func(err error) {
+		log.Printf("panic recovered: %v", err)
+	}))
 }
