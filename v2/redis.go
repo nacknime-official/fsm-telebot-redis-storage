@@ -7,6 +7,7 @@ import (
 	"encoding/gob"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -25,6 +26,8 @@ type Storage struct {
 	rds  *redis.Client
 	pref StorageSettings
 }
+
+var _ fsm.Storage = (*Storage)(nil)
 
 type StorageSettings struct {
 	// Prefix for records in Redis.
@@ -66,8 +69,8 @@ func NewDefaultStorage(client *redis.Client) *Storage {
 	}
 }
 
-func (s *Storage) GetState(chatId, userId int64) (fsm.State, error) {
-	val, err := s.rds.Get(context.TODO(), s.generateKey(chatId, userId, stateKey)).Result()
+func (s *Storage) GetState(ctx context.Context, key fsm.StorageKey) (fsm.State, error) {
+	val, err := s.rds.Get(ctx, s.generateKey(key, stateKey)).Result()
 	if err != nil {
 		if errors.Is(err, redis.Nil) {
 			return fsm.DefaultState, nil
@@ -78,46 +81,47 @@ func (s *Storage) GetState(chatId, userId int64) (fsm.State, error) {
 	return fsm.State(val), nil
 }
 
-func (s *Storage) SetState(chatId, userId int64, state fsm.State) error {
+func (s *Storage) SetState(ctx context.Context, key fsm.StorageKey, state fsm.State) error {
 	err := s.rds.Set(
-		context.TODO(),
-		s.generateKey(chatId, userId, stateKey),
+		ctx,
+		s.generateKey(key, stateKey),
 		string(state),
 		s.pref.TTLState,
 	).Err()
 	return wrapError(err, "set state")
 }
 
-func (s *Storage) ResetState(chatId, userId int64, withData bool) error {
-	if err := s.SetState(chatId, userId, fsm.DefaultState); err != nil {
+func (s *Storage) ResetState(ctx context.Context, key fsm.StorageKey, withData bool) error {
+	//TODO: Add transaction
+	if err := s.SetState(ctx, key, fsm.DefaultState); err != nil {
 		return wrapError(err, "reset state")
 	}
 
 	if withData {
-		if err := s.resetData(chatId, userId); err != nil {
+		if err := s.resetData(ctx, key); err != nil {
 			return wrapError(err, "reset data")
 		}
 	}
 	return nil
 }
 
-func (s *Storage) resetData(chatId, userId int64) error {
+func (s *Storage) resetData(ctx context.Context, key fsm.StorageKey) error {
 	var cursor uint64
 	var keys []string
 
-	redisKey := s.generateKey(chatId, userId, dataKey, "*")
+	redisKey := s.generateKey(key, dataKey, "*")
 
 	for {
 		var err error
 		keys, cursor, err = s.rds.
-			Scan(context.TODO(), cursor, redisKey, s.pref.ResetDataBatchSize).
+			Scan(ctx, cursor, redisKey, s.pref.ResetDataBatchSize).
 			Result()
 		if err != nil {
 			return fmt.Errorf("scan: %w", err)
 		}
 
 		if len(keys) > 0 {
-			if err := s.rds.Del(context.TODO(), keys...).Err(); err != nil {
+			if err := s.rds.Del(ctx, keys...).Err(); err != nil {
 				return fmt.Errorf("delete keys: %w", err)
 			}
 		}
@@ -130,9 +134,8 @@ func (s *Storage) resetData(chatId, userId int64) error {
 	return nil
 }
 
-func (s *Storage) UpdateData(chatId, userId int64, key string, data interface{}) error {
-	ctx := context.TODO()
-	redisKey := s.generateKey(chatId, userId, dataKey, key)
+func (s *Storage) UpdateData(ctx context.Context, targetKey fsm.StorageKey, key string, data interface{}) error {
+	redisKey := s.generateKey(targetKey, dataKey, key)
 
 	if data == nil {
 		err := s.rds.Del(ctx, redisKey).Err()
@@ -151,9 +154,9 @@ func (s *Storage) UpdateData(chatId, userId int64, key string, data interface{})
 	return wrapError(err, "set data")
 }
 
-func (s *Storage) GetData(chatId, userId int64, key string, to interface{}) error {
+func (s *Storage) GetData(ctx context.Context, targetKey fsm.StorageKey, key string, to interface{}) error {
 	dataBytes, err := s.rds.
-		Get(context.TODO(), s.generateKey(chatId, userId, dataKey, key)).
+		Get(ctx, s.generateKey(targetKey, dataKey, key)).
 		Bytes()
 
 	if errors.Is(err, redis.Nil) {
@@ -173,12 +176,27 @@ func (s *Storage) Close() error {
 	return s.rds.Close()
 }
 
-func (s *Storage) generateKey(chat, user int64, keyType keyType, keys ...string) string {
-	res := fmt.Sprintf("%s:%d:%d:%s", s.pref.Prefix, chat, user, keyType)
-	if len(keys) > 0 {
-		res += ":" + strings.Join(keys, ":")
+func (s *Storage) generateKey(key fsm.StorageKey, keyType keyType, keys ...string) string {
+	parts := make([]string, 0, 1+4+1+len(keys)) // prefix + key parts + keyType + keys
+	parts = append(
+		parts,
+		s.pref.Prefix,
+		strconv.FormatInt(key.BotID, 10),
+		strconv.FormatInt(key.ChatID, 10),
+		strconv.FormatInt(key.UserID, 10),
+		string(keyType),
+	)
+
+	if key.ThreadID != 0 {
+		parts = append(parts, strconv.FormatInt(key.ThreadID, 10))
 	}
-	return res
+
+	if len(keys) > 0 {
+		parts = append(parts, keys...)
+
+	}
+
+	return strings.Join(parts, ":")
 }
 
 func (s *Storage) encode(data interface{}) ([]byte, error) {
