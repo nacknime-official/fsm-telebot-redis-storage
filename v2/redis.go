@@ -173,12 +173,12 @@ func (s *Storage) Close() error {
 }
 
 func (s *Storage) generateKey(key fsm.StorageKey, keyType keyType, keys ...string) string {
-	// Precompute count of key's parts.
-	// +1 - prefix
-	// +3 - bot, user and chat ids
-	// +1 - key type
-	// +len(keys) - additional parts
-	keyPartsCount := 1 + 3 + 1 + len(keys)
+	const (
+		prefixPart     = 1
+		baseTargetPart = 3 // bot + chat + user
+		keyTypePart    = 1
+	)
+	keyPartsCount := prefixPart + baseTargetPart + keyTypePart + len(keys)
 	if key.ThreadID != 0 {
 		keyPartsCount++
 	}
