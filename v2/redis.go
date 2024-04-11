@@ -232,5 +232,8 @@ func (e ErrOperation) Error() string {
 }
 
 func wrapError(err error, op string) error {
+	if err == nil {
+		return nil
+	}
 	return &ErrOperation{Operation: op, Err: err}
 }
