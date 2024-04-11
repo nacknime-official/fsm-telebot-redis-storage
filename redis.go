@@ -86,11 +86,7 @@ func (s *Storage) SetState(chatId, userId int64, state fsm.State) error {
 		s.pref.TTLState,
 	).Err()
 
-	if err != nil {
-		return wrapError(err, "set state")
-	}
-
-	return nil
+	return wrapError(err, "set state")
 }
 
 func (s *Storage) ResetState(chatId, userId int64, withData bool) error {
@@ -153,11 +149,7 @@ func (s *Storage) UpdateData(chatId, userId int64, key string, data interface{})
 		Set(ctx, redisKey, encodedData, s.pref.TTLData).
 		Err()
 
-	if err != nil {
-		return wrapError(err, "set data")
-	}
-
-	return nil
+	return wrapError(err, "set data")
 }
 
 func (s *Storage) GetData(chatId, userId int64, key string, to interface{}) error {
@@ -172,10 +164,8 @@ func (s *Storage) GetData(chatId, userId int64, key string, to interface{}) erro
 		return wrapError(err, "get data")
 	}
 
-	if err := s.decode(dataBytes, to); err != nil {
-		return wrapError(err, "decode data")
-	}
-	return nil
+	err = s.decode(dataBytes, to)
+	return wrapError(err, "decode data")
 }
 
 func (s *Storage) Close() error {
@@ -217,5 +207,8 @@ func (e ErrOperation) Error() string {
 }
 
 func wrapError(err error, op string) error {
+	if err == nil {
+		return nil
+	}
 	return &ErrOperation{Operation: op, Err: err}
 }
