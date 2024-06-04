@@ -65,7 +65,7 @@ func NewStorage(client redis.UniversalClient, opts ...OptionFunc) *Storage {
 	}
 }
 
-func (s *Storage) GetState(ctx context.Context, key fsm.StorageKey) (fsm.State, error) {
+func (s *Storage) State(ctx context.Context, key fsm.StorageKey) (fsm.State, error) {
 	val, err := s.rds.Get(ctx, s.generateKey(key, stateKey)).Result()
 	if err != nil {
 		if errors.Is(err, redis.Nil) {
@@ -150,7 +150,7 @@ func (s *Storage) UpdateData(ctx context.Context, targetKey fsm.StorageKey, key 
 	return wrapError(err, "set data")
 }
 
-func (s *Storage) GetData(ctx context.Context, targetKey fsm.StorageKey, key string, to interface{}) error {
+func (s *Storage) Data(ctx context.Context, targetKey fsm.StorageKey, key string, to interface{}) error {
 	dataBytes, err := s.rds.
 		Get(ctx, s.generateKey(targetKey, dataKey, key)).
 		Bytes()
